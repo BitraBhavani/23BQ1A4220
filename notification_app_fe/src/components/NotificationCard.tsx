@@ -3,11 +3,25 @@ import { Notification } from "@/types/notification";
 
 interface Props {
   notification: Notification;
+  viewed: boolean;
+  onClick: () => void;
 }
 
-export default function NotificationCard({ notification }: Props) {
+export default function NotificationCard({
+  notification,
+  viewed,
+  onClick,
+}: Props) {
   return (
-    <Card sx={{ marginBottom: 2 }}>
+    <Card
+      onClick={onClick}
+      sx={{
+        marginBottom: 2,
+        cursor: "pointer",
+        opacity: viewed ? 0.6 : 1,
+        border: viewed ? "1px solid gray" : "2px solid #1976d2",
+      }}
+    >
       <CardContent>
         <Chip
           label={notification.Type}
