@@ -1,72 +1,120 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Container, Typography, CircularProgress } from "@mui/material";
+import {
+  Container,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Stack,
+} from "@mui/material";
+
 import NotificationCard from "@/components/NotificationCard";
 import { Notification } from "@/types/notification";
 import { fetchNotifications } from "@/services/notificationService";
 
-export default function Home() {
+export default function PriorityPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [viewedNotifications, setViewedNotifications] = useState<string[]>([]);
+  const [topN, setTopN] = useState(10);
+  const [filterType, setFilterType] = useState("All");
 
   useEffect(() => {
-    async function loadNotifications() {
-      try {
-        const data = await fetchNotifications();
-        setNotifications(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
+    async function loadData() {
+      const data = await fetchNotifications();
+      setNotifications(data);
     }
 
-    loadNotifications();
+    loadData();
   }, []);
 
-  useEffect(() => {
-    const stored = JSON.parse(
-      localStorage.getItem("viewedNotifications") || "[]"
-    );
-
-    setViewedNotifications(stored);
-  }, []);
-
-  const markAsViewed = (id: string) => {
-    if (viewedNotifications.includes(id)) {
-      return;
+  const getWeight = (type: string) => {
+    switch (type) {
+      case "Placement":
+        return 3;
+      case "Result":
+        return 2;
+      case "Event":
+        return 1;
+      default:
+        return 0;
     }
-
-    const updated = [...viewedNotifications, id];
-
-    setViewedNotifications(updated);
-
-    localStorage.setItem(
-      "viewedNotifications",
-      JSON.stringify(updated)
-    );
   };
+
+  const filteredNotifications = notifications
+    .filter(
+      (item) =>
+        filterType === "All" || item.Type === filterType
+    )
+    .sort((a, b) => {
+      const weightDiff =
+        getWeight(b.Type) - getWeight(a.Type);
+
+      if (weightDiff !== 0) {
+        return weightDiff;
+      }
+
+      return (
+        new Date(b.Timestamp).getTime() -
+        new Date(a.Timestamp).getTime()
+      );
+    })
+    .slice(0, topN);
 
   return (
     <Container sx={{ mt: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Campus Notifications
+        Priority Inbox
       </Typography>
 
-      {loading ? (
-        <CircularProgress />
-      ) : (
-        notifications.map((notification) => (
-          <NotificationCard
-            key={notification.ID}
-            notification={notification}
-            viewed={viewedNotifications.includes(notification.ID)}
-            onClick={() => markAsViewed(notification.ID)}
-          />
-        ))
-      )}
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+        <FormControl sx={{ minWidth: 150 }}>
+          <InputLabel>Top N</InputLabel>
+          <Select
+            value={topN}
+            label="Top N"
+            onChange={(e) =>
+              setTopN(Number(e.target.value))
+            }
+          >
+            <MenuItem value={10}>10</MenuItem>
+            <MenuItem value={15}>15</MenuItem>
+            <MenuItem value={20}>20</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl sx={{ minWidth: 180 }}>
+          <InputLabel>Type</InputLabel>
+          <Select
+            value={filterType}
+            label="Type"
+            onChange={(e) =>
+              setFilterType(e.target.value)
+            }
+          >
+            <MenuItem value="All">All</MenuItem>
+            <MenuItem value="Placement">
+              Placement
+            </MenuItem>
+            <MenuItem value="Result">
+              Result
+            </MenuItem>
+            <MenuItem value="Event">
+              Event
+            </MenuItem>
+          </Select>
+        </FormControl>
+      </Stack>
+
+      {filteredNotifications.map((notification) => (
+        <NotificationCard
+          key={notification.ID}
+          notification={notification}
+          viewed={false}
+          onClick={() => {}}
+        />
+      ))}
     </Container>
   );
 }
